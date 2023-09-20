@@ -52,8 +52,7 @@ def fileIsSolution(name):
         return False
     return True
 
-def getInstanceAnalyses(instance, folder, showResults = False):
-    solutionSampleSize = None
+def getInstanceAnalyses(instance, folder, solutionSampleSize = None, showResults = False):
     solutions = []
     solverResults = None
     fileNames = list(filter(fileIsSolution, os.listdir(folder)))
@@ -189,11 +188,11 @@ def getInstanceAnalyses(instance, folder, showResults = False):
     perfectRecursiveSolutions = allSuperTiles.get(perfectRecursiveSolutionId, 0)
 
     if showResults:
-        plt.cla()
+        fig, axes = plt.subplot_mosaic("AAC;AAB;AAB", constrained_layout=True)
+        plot1 = axes['A']
+        plot2 = axes['B']
+        plot3 = axes['C']
 
-        plot1 = plt.subplot2grid((3, 3), (0, 0), rowspan=3, colspan=2)
-        plot2 = plt.subplot2grid((3, 3), (1, 2), rowspan=2, colspan=1)
-        plot3 = plt.subplot2grid((3, 3), (0, 2), rowspan=1, colspan=1)
 
         plot1.pcolormesh(mesh, edgecolors='k', linewidth=2, cmap='Reds')
         plot1.set_xlim([0, mesh.shape[0]])
@@ -202,13 +201,14 @@ def getInstanceAnalyses(instance, folder, showResults = False):
         plot1.set_yticks(np.arange(0.5, size, 1), indexes)
         for x in np.arange(0, size):
             for y in np.arange(0, size):
-                plot1.text(
-                    x + 0.5,
-                    y + 0.5,
-                    str(adjacency[x][y]),
-                    horizontalalignment='center',
-                    verticalalignment='center',
-                )
+                if adjacency[x][y] > 0:
+                    plot1.text(
+                        x + 0.5,
+                        y + 0.5,
+                        str(adjacency[x][y]),
+                        horizontalalignment='center',
+                        verticalalignment='center',
+                    )
 
         plot2.axis('tight')
         plot2.axis('off')
@@ -234,7 +234,6 @@ def getInstanceAnalyses(instance, folder, showResults = False):
         table.auto_set_font_size(False)
         table.set_fontsize(8)
 
-        plt.tight_layout()
         plt.show()
 
     return {
@@ -255,12 +254,13 @@ def getInstanceAnalysesStar(args):
     return getInstanceAnalyses(*args)
 
 def main():
-#     getInstanceAnalyses('33', '../results/06/33', True)
+#     getInstanceAnalyses('2', '../results/06/2', None, True)
 #     return
 
     print("generating adjacency map")
     groupName = str(sys.argv[1])
     shouldGenerate = sys.argv[2] == "true"
+    solutionSampleSize = int(sys.argv[3])
 
     resultsFolder = "../results/" + groupName
     csvName = "./data/" + groupName + "tiles.csv"
@@ -269,7 +269,7 @@ def main():
         results = []
         instances = [x for x in os.listdir(resultsFolder) if x.isnumeric()]
         instanceFolders = [join(resultsFolder, instance) for instance in instances]
-        inputs = list(zip(instances, instanceFolders))
+        inputs = list(zip(instances, instanceFolders, [solutionSampleSize for x in instances]))
         with Pool(6) as pool:
             results = list(tqdm(pool.imap_unordered(getInstanceAnalysesStar, inputs, chunksize=1), total=len(inputs)))
         with open(join(resultsFolder, 'analyses.json'), 'w') as f:
@@ -283,16 +283,23 @@ def main():
 #     print("puzzle without superblocks:")
 #     print([(x['name'], x['numberOfSolutions']) for x in results if len(x['superBlocks']) == 0])
 
-    fig, axes = plt.subplot_mosaic("ABC;DDD", constrained_layout=True)
+
+    # show my results
+    fig, axes = plt.subplot_mosaic("ABCE;DDDD", constrained_layout=True)
 
     plt1 = axes['A']
     plt2 = axes['B']
     plt3 = axes['C']
     plt4 = axes['D']
+    plt5 = axes['E']
 
     plt1.scatter([x['numberOfSameSidedEdges'] for x in results], [x['numberOfSolutions'] for x in results])
     plt1.set_xlabel('number of same sided edges')
     plt1.set_ylabel('number of solutions')
+
+    plt5.scatter([len(x['superBlocks']) for x in results], [x['numberOfSolutions'] for x in results])
+    plt5.set_xlabel('number of superblocks')
+    plt5.set_ylabel('number of solutions')
 
     plt2.scatter([x['numberOfPerfectRecursiveSolutions'] for x in results], [x['numberOfSolutions'] for x in results])
     plt2.set_xlabel('number of perfect recursive solutions')
@@ -321,6 +328,33 @@ def main():
     plt4.legend()
 
     plt.show()
+
+    # relate to the dataset
+    fig, axes = plt.subplot_mosaic("AB;CD", constrained_layout=True)
+
+    plt1 = axes['A']
+    plt2 = axes['B']
+    plt3 = axes['C']
+    plt4 = axes['D']
+
+    plt1.scatter([x['numberOfSolutions'] for x in results], [int(x['csvLine']['recursions']) for x in results])
+    plt1.set_xlabel('number of solutions')
+    plt1.set_ylabel('number of recursions')
+
+    plt2.scatter([len(x['superBlocks']) for x in results], [int(x['csvLine']['recursions']) for x in results])
+    plt2.set_xlabel('number of superblocks')
+    plt2.set_ylabel('number of recursions')
+
+    plt3.scatter([x['numberOfPerfectRecursiveSolutions'] for x in results], [int(x['csvLine']['recursions']) for x in results])
+    plt3.set_xlabel('number of perfect recursive solutions')
+    plt3.set_ylabel('number of recursions')
+
+    plt4.scatter([x['numberOfSameSidedEdges'] for x in results], [int(x['csvLine']['recursions']) for x in results])
+    plt4.set_xlabel('number of same sided edges')
+    plt4.set_ylabel('number of recursions')
+
+    plt.show()
+
 
 if __name__ == '__main__':
     main()
