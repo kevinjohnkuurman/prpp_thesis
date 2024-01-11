@@ -7,10 +7,14 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
 import kotlinx.coroutines.*
 import java.io.File
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.measureTimeMillis
 
-data class RuntimeState(val mapper: ObjectMapper, var solutions: AtomicInteger)
+data class RuntimeState(
+    val mapper: ObjectMapper,
+    var solutions: ConcurrentLinkedQueue<Any>
+)
 data class Tile(
     @field:JsonProperty("id") val id: Int,
     @field:JsonProperty("rotated") val rotated: Boolean,
@@ -50,27 +54,25 @@ fun saveSolution(groupName: String, state: RuntimeState, id: Int, fw: Int, fh: I
         add_at(board, pos, tile, tile.id)
     }
 
-    val solutionIndex = state.solutions.getAndIncrement()
-    File("../results/$groupName/${id}/").mkdirs()
-    File("../results/$groupName/${id}/solution${solutionIndex}.json").writeText(state.mapper.writerWithDefaultPrettyPrinter().writeValueAsString(
-        mapOf(
-            "tiles" to usedTiles.map { (coord, tile) ->
-                mapOf(
-                    "coord" to coord,
-                    "tile" to tile
-                )
-            },
-            "board" to board
-        )
+    state.solutions.add(mapOf(
+        "tiles" to usedTiles.map { (coord, tile) ->
+            mapOf(
+                "coord" to coord,
+                "tile" to tile
+            )
+        },
+        "board" to board
     ))
 }
 
 
 fun markFinished(groupName: String, state: RuntimeState, id: Int, runtime: Long, fw: Int, fh: Int, tiles: List<Tile>, puzzle: Map<String, String>) {
     File("../results/$groupName/${id}/").mkdirs()
-    File("../results/$groupName/${id}/finished.json").writeText(state.mapper.writerWithDefaultPrettyPrinter().writeValueAsString(
+    state.mapper.writerWithDefaultPrettyPrinter().writeValue(
+        File("../results/$groupName/${id}/finished.json"),
         mapOf(
-            "solutions" to state.solutions.get(),
+            "solutions" to state.solutions.size,
+            "foundSolutions" to state.solutions.toList(),
             "runtime" to runtime,
             "csvLine" to puzzle,
             "puzzle" to mapOf(
@@ -80,12 +82,12 @@ fun markFinished(groupName: String, state: RuntimeState, id: Int, runtime: Long,
                 "tiles" to tiles
             )
         )
-    ))
+    )
 //    Runtime.getRuntime().exec("python3 ./src/main/kotlin/org/example/generatePlots.py ./results/${id}").waitFor()
 }
 
 suspend fun solvePuzzle(groupName: String, state: RuntimeState, id: Int, fw: Int, fh: Int, remainingTiles: List<Tile>, usedTiles: List<Pair<Coord, Tile>>) {
-    withContext(Dispatchers.Default) {
+    coroutineScope {
         // sum the tiles to find overlap
         val board = createMatrix(fw, fh, 0)
         for ((pos, tile) in usedTiles) {
@@ -93,13 +95,13 @@ suspend fun solvePuzzle(groupName: String, state: RuntimeState, id: Int, fw: Int
         }
         if (board.any { it.any { it > 1 } }) {
             // overlap, ignore
-            return@withContext
+            return@coroutineScope
         }
 
         if (remainingTiles.isEmpty()) {
             // if no overlap, and no more tiles then we found a solution
             saveSolution(groupName, state, id, fw, fh, usedTiles)
-            return@withContext
+            return@coroutineScope
         }
 
         // attempt to sub solve
@@ -171,18 +173,18 @@ fun processPuzzle(groupName: String, puzzle: Map<String, String>) {
     }
     val sortedTiles = tiles.sortedBy { tile -> tile.x * tile.y }.reversed()
 
-    if (File("./results/$id/finished.json").exists()) {
+    if (File("../results/$groupName/${id}/finished.json").exists()) {
         println("already solved puzzle $id")
         return
     }
 
     if (!hasSolution) {
         println("puzzle $id has no solution")
-        val state = RuntimeState(mapper, AtomicInteger(0))
+        val state = RuntimeState(mapper, ConcurrentLinkedQueue())
         markFinished(groupName, state, id, 0, fw, fh, tiles, puzzle)
     } else {
         println("solving puzzle $id")
-        val state = RuntimeState(mapper, AtomicInteger(0))
+        val state = RuntimeState(mapper, ConcurrentLinkedQueue())
         val millis = measureTimeMillis {
             runBlocking(Dispatchers.Default) {
                 solvePuzzle(groupName, state, id, fw, fh, sortedTiles, emptyList())
@@ -197,7 +199,7 @@ fun main(args: Array<String>) {
     println(Runtime.getRuntime().maxMemory());
 
     // solve
-    val groupName = "09"
+    val groupName = args[0]
     val rows = csvReader().readAllWithHeader(File("./data/${groupName}tiles.csv"))
     println("will attempt to solve ${rows.size} puzzles")
     for (puzzle in rows) {

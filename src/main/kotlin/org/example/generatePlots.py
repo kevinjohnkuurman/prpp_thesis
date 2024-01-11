@@ -10,23 +10,27 @@ from multiprocessing import Pool
 from tqdm import tqdm
 from os.path import isfile, join
 
-def generate_figure(name):
+WITH_LINES = False
+WITH_LABELS = False
+WITH_TICKS = False
+
+
+def generate_figure(data, index):
     folder = str(sys.argv[1])
-    matches = re.search(r"solution(?P<index>\d+)\.json", name)
-    if matches is None:
-        return
-    index = matches.group('index')
-    if index is None:
-        return
-
-    with open(join(folder, name), 'r') as f:
-        data = json.load(f)
-        board = np.array(data["board"])
-        plt.cla()
+    board = np.array(data["board"])
+    plt.cla()
+    if WITH_LINES:
         plt.pcolormesh(board.transpose(), edgecolors='k', linewidth=2)
-        plt.xlim([0, board.shape[0]])
-        plt.ylim([0, board.shape[1]])
+    else:
+        plt.pcolormesh(board.transpose())
+    plt.xlim([0, board.shape[0]])
+    plt.ylim([0, board.shape[1]])
 
+    if not WITH_TICKS:
+        plt.xticks([])
+        plt.yticks([])
+
+    if WITH_LABELS:
         for placement in data['tiles']:
             plt.text(
                 placement['coord']['X'] + 0.5,
@@ -35,12 +39,23 @@ def generate_figure(name):
                 bbox=dict(facecolor='white', edgecolor='black'),
                 horizontalalignment='center',
                 verticalalignment='center',
-            )
+                )
 
-        plt.savefig(f"{folder}/solution{index}.png")
+    plt.savefig(f"{folder}/solution{index}.png")
+
+
+def generate_figure_star(args):
+    return generate_figure(*args)
+
 
 if __name__ == '__main__':
     folder = str(sys.argv[1])
-    names = list(os.listdir(folder))
+    solverResults = None
+    with open(join(folder, 'finished.json'), 'r') as f:
+        solverResults = json.load(f)
+
+    solutions = solverResults['foundSolutions']
+
+    inputs = list(zip(solutions, [x for x in range(len(solutions))]))
     with Pool(4) as pool:
-        list(tqdm(pool.imap(generate_figure, names), total=len(names)))
+        list(tqdm(pool.imap_unordered(generate_figure_star, inputs, chunksize=1), total=len(inputs)))
