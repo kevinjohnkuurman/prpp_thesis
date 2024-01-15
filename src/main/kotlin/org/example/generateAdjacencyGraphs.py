@@ -8,7 +8,7 @@ import re
 import itertools
 from multiprocessing import Pool
 from operator import itemgetter
-
+from matplotlib.ticker import MaxNLocator
 from matplotlib import cm
 from matplotlib.colors import ListedColormap
 from tqdm import tqdm
@@ -172,7 +172,7 @@ def getInstanceAnalyses(instance, folder, solutionSampleSize=None, showResults=F
                     *filter(lambda x: x['tile']['id'] not in [id, oid], placedTiles)
                 ]
 
-                # record the new super tile appearance
+                # record the new super-tile appearance
                 if newTileId not in foundSuperTilesForSolution:
                     foundSuperTilesForSolution.append(newTileId)
 
@@ -232,10 +232,10 @@ def getInstanceAnalysesStar(args):
 
 
 def main():
-    print("generating adjacency map")
     groupName = str(sys.argv[1])
     shouldGenerate = sys.argv[2] == "true"
     solutionSampleSize = int(sys.argv[3])
+    print("generating adjacency map " + groupName)
 
     resultsFolder = "../results/" + groupName
     csvName = "./data/" + groupName + "tiles.csv"
@@ -258,29 +258,49 @@ def main():
     with open(join(resultsFolder, 'analyses.json'), 'r') as f:
         results = json.load(f)
 
-    print("puzzle with perfect solutions:")
-    print([(x['name'], x['numberOfPerfectRecursiveSolutions']) for x in results if x['numberOfPerfectRecursiveSolutions'] > 0])
+    # generate the graphs
+    plt.rcParams.update({'font.size': 14})
+    C_SOLVABLE = np.array([0, 140, 0]) / 255.0
+    C_UNSOLVABLE = np.array([255, 0, 0]) / 255.0
 
-    plt.rcParams.update({'font.size': 10})
+    print((len(results), len([1 for x in results if x['numberOfSolutions'] > 0])))
+    values = sorted([x for x in results if x['numberOfSolutions'] > 0], key=lambda x: x['numberOfEvaluatedSolutions'])
+    values = [x for x in values if x['numberOfEvaluatedSolutions'] > 0]
+    print(("least solutions", values[0]['name'], values[0]['numberOfSolutions']))
+    print(("most solutions", values[-1]['name'], values[-1]['numberOfSolutions']))
+
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
     plt1 = axes['A']
     plt1.scatter(
         [x['numberOfSolutions'] for x in results],
         [int(x['csvLine']['recursions']) for x in results],
-        alpha=0.1
+        alpha=0.1,
+        c=[C_SOLVABLE if int(x['csvLine']['has_solutions']) == 1 else C_UNSOLVABLE for x in results]
     )
     plt1.set_xlabel('number of solutions')
     plt1.set_ylabel('instance hardness')
+    plt1.tick_params(axis='x', labelrotation=45)
     plt.savefig("./figures/" + groupName + "_solutions_hardness.jpg")
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
     plt1 = axes['A']
     plt1.errorbar(
-        [np.mean(x['squaredNessRatio']) for x in results],
-        [x['numberOfSolutions'] for x in results],
-        xerr=[np.std(x['squaredNessRatio']) for x in results],
+        [np.mean(x['squaredNessRatio']) for x in results if int(x['csvLine']['has_solutions']) == 1],
+        [x['numberOfSolutions'] for x in results if int(x['csvLine']['has_solutions']) == 1],
+        color=C_SOLVABLE,
+        ecolor=C_SOLVABLE,
+        xerr=[np.std(x['squaredNessRatio']) for x in results if int(x['csvLine']['has_solutions']) == 1],
         fmt='o',
-        ecolor='r'
+        alpha=0.1,
+    )
+    plt1.errorbar(
+        [np.mean(x['squaredNessRatio']) for x in results if int(x['csvLine']['has_solutions']) == 0],
+        [x['numberOfSolutions'] for x in results if int(x['csvLine']['has_solutions']) == 0],
+        color=C_UNSOLVABLE,
+        ecolor=C_UNSOLVABLE,
+        xerr=[np.std(x['squaredNessRatio']) for x in results if int(x['csvLine']['has_solutions']) == 0],
+        fmt='o',
+        alpha=0.1,
     )
     plt1.set_xlabel('mean squareness ratio (short side / long side)')
     plt1.set_ylabel('number of solutions')
@@ -288,60 +308,58 @@ def main():
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
     plt1 = axes['A']
-    plt1.scatter([x['numberOfSameSidedEdges'] for x in results], [x['numberOfSolutions'] for x in results], alpha=0.1)
-    plt1.set_xlabel('number of same sided edges')
+    plt1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    plt1.scatter(
+        [x['numberOfSameSidedEdges'] for x in results],
+        [x['numberOfSolutions'] for x in results],
+        alpha=0.1,
+        c=[C_SOLVABLE if int(x['csvLine']['has_solutions']) == 1 else C_UNSOLVABLE for x in results],
+    )
+    plt1.set_xlabel('number of tile pairs sharing an edge of equal dimension')
     plt1.set_ylabel('number of solutions')
     plt.savefig("./figures/" + groupName + "_same_sided_edges.jpg")
 
-    fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
-    plt1 = axes['A']
-    values = sorted([x for x in results if x['numberOfSolutions'] > 0], key=lambda x: x['numberOfEvaluatedSolutions'])
-    values_c = values[-1]
-    values = [x for x in values if x['numberOfEvaluatedSolutions'] > 0]
-    print(values[-1]['name'])
-    N = min([50, len(values)])
-    values = [values[i] for i in np.linspace(0.5, len(values) - 0.5, N, dtype=int)]
-    X_axis = np.arange(len(values))
-
-    plt1.bar(X_axis - 0.2, [x['numberOfRecursiveSolutions'] for x in values], 0.4, label='Recursive super-tile solutions')
-    plt1.bar(X_axis + 0.2, [x['numberOfEvaluatedSolutions'] for x in values], 0.4, label='Solutions')
-    plt1.set_xlim(0, len(values))
-    plt1.set_xlabel('Instance')
-    plt1.set_xticks(X_axis, ['' for x in X_axis])
-    plt1.legend(loc='upper left')
-    plt.savefig("./figures/" + groupName + "_solutions_vs_recursive_solutions.jpg", dpi=200)
-
-
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    ax.scatter([len(x['superTiles']) for x in results],
-               [x['numberOfSolutions'] for x in results],
-               [int(x['csvLine']['recursions']) for x in results],
-               alpha=0.1)
-    ax.set_xlabel('number of super-tiles')
-    ax.set_ylabel('number of solutions')
-    ax.set_zlabel('hardness')
-    plt.savefig("./figures/" + groupName + "_solutions_hardness_supertiles.jpg", dpi=200)
-
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    ax.scatter([x['numberOfSameSidedEdges'] for x in results],
-               [np.mean(x['squaredNessRatio']) for x in results],
-               [int(x['csvLine']['recursions']) for x in results],
-               alpha=0.1)
-    ax.set_xlabel('number of same edges dimensions')
-    ax.set_ylabel('mean squareness ratio')
-    ax.set_zlabel('hardness')
-    plt.savefig("./figures/" + groupName + "_hardness_squareness_dimensions.jpg", dpi=200)
+    # fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
+    # plt1 = axes['A']
+    # values = sorted([x for x in results if x['numberOfSolutions'] > 0], key=lambda x: x['numberOfEvaluatedSolutions'])
+    # values = [x for x in values if x['numberOfEvaluatedSolutions'] > 0]
+    # print(("least solutions", values[0]['name']))
+    # print(("most solutions", values[-1]['name']))
+    # N = min([50, len(values)])
+    # values = [values[i] for i in np.linspace(0.5, len(values) - 0.5, N, dtype=int)]
+    # X_axis = np.arange(len(values))
+    #
+    # plt1.bar(X_axis - 0.2, [x['numberOfRecursiveSolutions'] for x in values], 0.4, label='Recursive super-tile solutions')
+    # plt1.bar(X_axis + 0.2, [x['numberOfEvaluatedSolutions'] for x in values], 0.4, label='Solutions')
+    # plt1.set_xlim(0, len(values))
+    # plt1.set_xlabel('Instance')
+    # plt1.set_xticks(X_axis, ['' for x in X_axis])
+    # plt1.legend(loc='upper left')
+    # plt.savefig("./figures/" + groupName + "_solutions_vs_recursive_solutions.jpg", dpi=200)
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
     plt1 = axes['A']
     plt1.scatter(
+        [x['numberOfSolutions'] for x in results],
+        [x['numberOfRecursiveSolutions'] for x in results],
+        alpha=0.1,
+        c=[C_SOLVABLE if int(x['csvLine']['has_solutions']) == 1 else C_UNSOLVABLE for x in results]
+    )
+    plt1.set_xlabel('number of solutions')
+    plt1.set_ylabel('number of recursive super-tile solutions')
+    plt1.tick_params(axis='x', labelrotation=45)
+    plt.savefig("./figures/" + groupName + "_solutions_vs_recursive_solutions.jpg", dpi=200)
+
+    fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
+    plt1 = axes['A']
+    plt1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    plt1.scatter(
         [x['numberOfSameSidedEdges'] for x in results],
         [int(x['csvLine']['recursions']) for x in results],
+        c=[C_SOLVABLE if int(x['csvLine']['has_solutions']) == 1 else C_UNSOLVABLE for x in results],
         alpha=0.1
     )
-    plt1.set_xlabel('number of same sided edges')
+    plt1.set_xlabel('number of tile pairs sharing an edge of equal dimension')
     plt1.set_ylabel('hardness')
     plt.savefig("./figures/" + groupName + "_hardness_same_sided_edges.jpg")
 
@@ -350,13 +368,54 @@ def main():
     plt1.scatter(
         [np.mean(x['squaredNessRatio']) for x in results],
         [int(x['csvLine']['recursions']) for x in results],
+        c=[C_SOLVABLE if int(x['csvLine']['has_solutions']) == 1 else C_UNSOLVABLE for x in results],
         alpha=0.1
     )
     plt1.set_xlabel('mean squareness ratio')
     plt1.set_ylabel('hardness')
     plt.savefig("./figures/" + groupName + "_squareness_hardness.jpg")
 
-    if groupName == "09":
+    fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
+    plt1 = axes['A']
+    plt1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    plt1.scatter(
+        [len(x['superTiles']) for x in results],
+        [int(x['csvLine']['recursions']) for x in results],
+        c=[C_SOLVABLE if int(x['csvLine']['has_solutions']) == 1 else C_UNSOLVABLE for x in results],
+        alpha=0.1
+    )
+    plt1.set_xlabel('number of composable super-tiles')
+    plt1.set_ylabel('hardness')
+    plt.savefig("./figures/" + groupName + "_all_supertiles_hardness.jpg")
+
+    fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
+    plt1 = axes['A']
+    plt1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    plt1.scatter(
+        [len([y for y in x['superTiles'] if len(y.split(",")) == 2]) for x in results],
+        [int(x['csvLine']['recursions']) for x in results],
+        c=[C_SOLVABLE if int(x['csvLine']['has_solutions']) == 1 else C_UNSOLVABLE for x in results],
+        alpha=0.1
+    )
+    plt1.set_xlabel('number of composable first degree super-tiles')
+    plt1.set_ylabel('hardness')
+    plt.savefig("./figures/" + groupName + "_first_degree_supertiles_hardness.jpg")
+
+    # fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
+    # plt1 = axes['A']
+    # plt1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    # plt1.scatter(
+    #     [x['numberOfSameSidedEdges'] for x in results],
+    #     [int(x['csvLine']['recursions']) for x in results],
+    #     c=[C_SOLVABLE if int(x['csvLine']['has_solutions']) == 1 else C_UNSOLVABLE for x in results],
+    #     alpha=0.1
+    # )
+    # plt1.set_xlabel('number of tile pairs sharing an edge of equal dimension')
+    # plt1.set_ylabel('hardness')
+    # plt.savefig("./figures/" + groupName + "_same_sided_edges_hardness.jpg")
+
+
+    if False:
         instance = next(x for x in results if x['name'] == '4661')
         print(instance)
         indexes = instance['pureIndexes']
@@ -390,7 +449,7 @@ def main():
         plt.savefig("./figures/" + groupName + "_instance_analyses.jpg", dpi = 200)
 
 
-    if True:
+    if groupName == "10":
         dots = []
         for x in ["06", "07", "08", "09", "10"]:
             with open(join("../results/" + x, 'analyses.json'), 'r') as f:
@@ -419,7 +478,7 @@ def main():
     plt5 = axes['E']
 
     plt1.scatter([x['numberOfSameSidedEdges'] for x in results], [x['numberOfSolutions'] for x in results], alpha=0.1)
-    plt1.set_xlabel('number of same sided edges')
+    plt1.set_xlabel('number of tile pairs sharing an edge of equal dimension')
     plt1.set_ylabel('number of solutions')
 
     plt5.scatter([len(x['superTiles']) for x in results], [x['numberOfSolutions'] for x in results], alpha=0.1)
@@ -493,7 +552,7 @@ def main():
 
     plt4.scatter([x['numberOfSameSidedEdges'] for x in results], [int(x['csvLine']['recursions']) for x in results],
                  alpha=0.1)
-    plt4.set_xlabel('number of same sided edges')
+    plt4.set_xlabel('number of tile pairs sharing an edge of equal dimension')
     plt4.set_ylabel('number of recursions')
 
     if True:

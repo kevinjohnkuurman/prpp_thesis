@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.io.File
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
@@ -13,6 +15,7 @@ import kotlin.system.measureTimeMillis
 
 data class RuntimeState(
     val mapper: ObjectMapper,
+    val semaphore: Semaphore?,
     var solutions: ConcurrentLinkedQueue<Any>
 )
 data class Tile(
@@ -124,7 +127,13 @@ suspend fun solvePuzzle(groupName: String, state: RuntimeState, id: Int, fw: Int
 
             // actually iterate deeper
             async {
-                solvePuzzle(groupName, state, id, fw, fh, newRemainingTiles, usedTiles + listOf(Pair(pos, tileNormal)))
+                if (state.semaphore != null) {
+                    state.semaphore.withPermit {
+                        solvePuzzle(groupName, state, id, fw, fh, newRemainingTiles, usedTiles + listOf(Pair(pos, tileNormal)))
+                    }
+                } else {
+                    solvePuzzle(groupName, state, id, fw, fh, newRemainingTiles, usedTiles + listOf(Pair(pos, tileNormal)))
+                }
             }
         }
 
@@ -145,7 +154,13 @@ suspend fun solvePuzzle(groupName: String, state: RuntimeState, id: Int, fw: Int
 
             // actually iterate deeper
             async {
-                solvePuzzle(groupName, state, id, fw, fh, newRemainingTiles, usedTiles + listOf(Pair(pos, tileRotated)))
+                if (state.semaphore != null) {
+                    state.semaphore.withPermit {
+                        solvePuzzle(groupName, state, id, fw, fh, newRemainingTiles, usedTiles + listOf(Pair(pos, tileRotated)))
+                    }
+                } else {
+                    solvePuzzle(groupName, state, id, fw, fh, newRemainingTiles, usedTiles + listOf(Pair(pos, tileRotated)))
+                }
             }
         }
 
@@ -180,11 +195,11 @@ fun processPuzzle(groupName: String, puzzle: Map<String, String>) {
 
     if (!hasSolution) {
         println("puzzle $id has no solution")
-        val state = RuntimeState(mapper, ConcurrentLinkedQueue())
+        val state = RuntimeState(mapper, Semaphore(99999, 0), ConcurrentLinkedQueue())
         markFinished(groupName, state, id, 0, fw, fh, tiles, puzzle)
     } else {
         println("solving puzzle $id")
-        val state = RuntimeState(mapper, ConcurrentLinkedQueue())
+        val state = RuntimeState(mapper, Semaphore(99999, 0), ConcurrentLinkedQueue())
         val millis = measureTimeMillis {
             runBlocking(Dispatchers.Default) {
                 solvePuzzle(groupName, state, id, fw, fh, sortedTiles, emptyList())

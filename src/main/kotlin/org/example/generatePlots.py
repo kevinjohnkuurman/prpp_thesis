@@ -12,7 +12,8 @@ from os.path import isfile, join
 
 WITH_LINES = False
 WITH_LABELS = False
-WITH_TICKS = False
+WITH_TICKS = True
+CARE_ABOUT_ASPECT = False
 
 
 def generate_figure(data, index):
@@ -23,6 +24,8 @@ def generate_figure(data, index):
         plt.pcolormesh(board.transpose(), edgecolors='k', linewidth=2)
     else:
         plt.pcolormesh(board.transpose())
+    if CARE_ABOUT_ASPECT:
+        plt.axis('scaled')
     plt.xlim([0, board.shape[0]])
     plt.ylim([0, board.shape[1]])
 
