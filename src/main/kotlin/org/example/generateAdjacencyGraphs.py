@@ -414,13 +414,16 @@ def main():
     # plt1.set_ylabel('hardness')
     # plt.savefig("./figures/" + groupName + "_same_sided_edges_hardness.jpg")
 
-
     if False:
         instance = next(x for x in results if x['name'] == '4661')
         print(instance)
         indexes = instance['pureIndexes']
         adjacency = np.array(instance['adjacencyMesh'])
         size = len(indexes)
+        def conv(v):
+            (edge, id) = v.rstrip(v[-1]).split("[")
+            return f"${id} ${edge}"
+        convertedIndexes = [conv(x) for x in indexes]
         mesh = adjacency[0:size, 0:size]
 
         fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
@@ -433,8 +436,10 @@ def main():
         plot1.pcolormesh(mesh, edgecolors='k', linewidth=2, cmap=newcmp)
         plot1.set_xlim([0, mesh.shape[0]])
         plot1.set_ylim([0, mesh.shape[1]])
-        plot1.set_xticks(np.arange(0.5, size, 1), indexes, rotation=45)
-        plot1.set_yticks(np.arange(0.5, size, 1), indexes)
+        plot1.set_xticks(np.arange(0.5, size, 1), convertedIndexes, rotation=45)
+        plot1.set_yticks(np.arange(0.5, size, 1), convertedIndexes)
+        plot1.set_xlabel('Tile 1')
+        plot1.set_ylabel('Tile 2')
         for x in np.arange(0, size):
             for y in np.arange(0, size):
                 if adjacency[x][y] > 0:
@@ -444,6 +449,7 @@ def main():
                         str(adjacency[x][y]),
                         horizontalalignment='center',
                         verticalalignment='center',
+                        fontsize='12'
                         )
         plt.gcf().set_size_inches(10, 10)
         plt.savefig("./figures/" + groupName + "_instance_analyses.jpg", dpi = 200)

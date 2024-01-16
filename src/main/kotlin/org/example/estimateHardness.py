@@ -4,6 +4,7 @@ import json
 import matplotlib.pyplot as plt
 import sys
 import csv
+from matplotlib.ticker import MaxNLocator
 
 
 def getNumberOfComposableSupertiles(tiles):
@@ -53,6 +54,7 @@ def main():
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
     plt1 = axes['A']
+    plt1.xaxis.set_major_locator(MaxNLocator(integer=True))
     plt1.scatter(
         [x['hardnessMeasure'] for x in results],
         [x['recursions'] for x in results],

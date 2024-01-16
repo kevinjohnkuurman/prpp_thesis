@@ -11,8 +11,8 @@ from tqdm import tqdm
 from os.path import isfile, join
 
 WITH_LINES = False
-WITH_LABELS = False
-WITH_TICKS = True
+WITH_LABELS = True
+WITH_TICKS = False
 CARE_ABOUT_ASPECT = False
 
 
@@ -38,7 +38,7 @@ def generate_figure(data, index):
             plt.text(
                 placement['coord']['X'] + 0.5,
                 placement['coord']['Y'] + placement['tile']['Y'] - 0.5,
-                f"{placement['tile']['id']}\n{'T' if placement['tile']['rotated'] else 'F' }",
+                f"{placement['tile']['id']}",
                 bbox=dict(facecolor='white', edgecolor='black'),
                 horizontalalignment='center',
                 verticalalignment='center',
