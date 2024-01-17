@@ -414,7 +414,7 @@ def main():
     # plt1.set_ylabel('hardness')
     # plt.savefig("./figures/" + groupName + "_same_sided_edges_hardness.jpg")
 
-    if False:
+    if True:
         instance = next(x for x in results if x['name'] == '4661')
         print(instance)
         indexes = instance['pureIndexes']
@@ -446,7 +446,7 @@ def main():
                     plot1.text(
                         x + 0.5,
                         y + 0.5,
-                        str(adjacency[x][y]),
+                        str(int(adjacency[x][y])),
                         horizontalalignment='center',
                         verticalalignment='center',
                         fontsize='12'
