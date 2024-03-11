@@ -11,7 +11,7 @@ from tqdm import tqdm
 from os.path import isfile, join
 
 WITH_LINES = False
-WITH_LABELS = True
+WITH_LABELS = False
 WITH_TICKS = False
 CARE_ABOUT_ASPECT = False
 

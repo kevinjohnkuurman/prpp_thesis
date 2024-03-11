@@ -260,8 +260,8 @@ def main():
 
     # generate the graphs
     plt.rcParams.update({'font.size': 14})
-    C_SOLVABLE = np.array([0, 140, 0]) / 255.0
-    C_UNSOLVABLE = np.array([255, 0, 0]) / 255.0
+    C_SOLVABLE = np.array([1, 84, 166]) / 255.0
+    C_UNSOLVABLE = np.array([238, 28, 37]) / 255.0
 
     print((len(results), len([1 for x in results if x['numberOfSolutions'] > 0])))
     values = sorted([x for x in results if x['numberOfSolutions'] > 0], key=lambda x: x['numberOfEvaluatedSolutions'])
@@ -280,6 +280,11 @@ def main():
     plt1.set_xlabel('number of solutions')
     plt1.set_ylabel('instance hardness')
     plt1.tick_params(axis='x', labelrotation=45)
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label='With solutions', markerfacecolor=C_SOLVABLE, markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Without solutions', markerfacecolor=C_UNSOLVABLE, markersize=10),
+    ]
+    plt.legend(handles=legend_elements)
     plt.savefig("./figures/" + groupName + "_solutions_hardness.jpg")
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
@@ -304,6 +309,12 @@ def main():
     )
     plt1.set_xlabel('mean squareness ratio (short side / long side)')
     plt1.set_ylabel('number of solutions')
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label='With solutions', markerfacecolor=C_SOLVABLE, markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Without solutions', markerfacecolor=C_UNSOLVABLE, markersize=10),
+    ]
+    plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left",
+               mode="expand", borderaxespad=0, ncol=2, handles=legend_elements)
     plt.savefig("./figures/" + groupName + "_squareness.jpg")
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
@@ -317,6 +328,11 @@ def main():
     )
     plt1.set_xlabel('number of tile pairs sharing an edge of equal dimension')
     plt1.set_ylabel('number of solutions')
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label='With solutions', markerfacecolor=C_SOLVABLE, markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Without solutions', markerfacecolor=C_UNSOLVABLE, markersize=10),
+    ]
+    plt.legend(handles=legend_elements)
     plt.savefig("./figures/" + groupName + "_same_sided_edges.jpg")
 
     # fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
@@ -348,6 +364,11 @@ def main():
     plt1.set_xlabel('number of solutions')
     plt1.set_ylabel('number of recursive super-tile solutions')
     plt1.tick_params(axis='x', labelrotation=45)
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label='With solutions', markerfacecolor=C_SOLVABLE, markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Without solutions', markerfacecolor=C_UNSOLVABLE, markersize=10),
+    ]
+    plt.legend(handles=legend_elements)
     plt.savefig("./figures/" + groupName + "_solutions_vs_recursive_solutions.jpg", dpi=200)
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
@@ -361,6 +382,12 @@ def main():
     )
     plt1.set_xlabel('number of tile pairs sharing an edge of equal dimension')
     plt1.set_ylabel('hardness')
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label='With solutions', markerfacecolor=C_SOLVABLE, markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Without solutions', markerfacecolor=C_UNSOLVABLE, markersize=10),
+    ]
+    plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left",
+               mode="expand", borderaxespad=0, ncol=2, handles=legend_elements)
     plt.savefig("./figures/" + groupName + "_hardness_same_sided_edges.jpg")
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
@@ -373,6 +400,11 @@ def main():
     )
     plt1.set_xlabel('mean squareness ratio')
     plt1.set_ylabel('hardness')
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label='With solutions', markerfacecolor=C_SOLVABLE, markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Without solutions', markerfacecolor=C_UNSOLVABLE, markersize=10),
+    ]
+    plt.legend(handles=legend_elements)
     plt.savefig("./figures/" + groupName + "_squareness_hardness.jpg")
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
@@ -386,6 +418,11 @@ def main():
     )
     plt1.set_xlabel('number of composable super-tiles')
     plt1.set_ylabel('hardness')
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label='With solutions', markerfacecolor=C_SOLVABLE, markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Without solutions', markerfacecolor=C_UNSOLVABLE, markersize=10),
+    ]
+    plt.legend(handles=legend_elements)
     plt.savefig("./figures/" + groupName + "_all_supertiles_hardness.jpg")
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
@@ -399,6 +436,11 @@ def main():
     )
     plt1.set_xlabel('number of composable first degree super-tiles')
     plt1.set_ylabel('hardness')
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label='With solutions', markerfacecolor=C_SOLVABLE, markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Without solutions', markerfacecolor=C_UNSOLVABLE, markersize=10),
+    ]
+    plt.legend(handles=legend_elements)
     plt.savefig("./figures/" + groupName + "_first_degree_supertiles_hardness.jpg")
 
     # fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
@@ -414,7 +456,7 @@ def main():
     # plt1.set_ylabel('hardness')
     # plt.savefig("./figures/" + groupName + "_same_sided_edges_hardness.jpg")
 
-    if True:
+    if False:
         instance = next(x for x in results if x['name'] == '4661')
         print(instance)
         indexes = instance['pureIndexes']
@@ -429,8 +471,8 @@ def main():
         fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
         plot1 = axes['A']
 
-        viridis = cm.get_cmap('GnBu', 256)
-        newcolors = viridis(np.linspace(0, 1, 256))[0:200]
+        viridis = cm.get_cmap('Greys', 256)
+        newcolors = viridis(np.linspace(0, 1, 256))[0:100]
         newcmp = ListedColormap(newcolors)
 
         plot1.pcolormesh(mesh, edgecolors='k', linewidth=2, cmap=newcmp)
@@ -455,7 +497,7 @@ def main():
         plt.savefig("./figures/" + groupName + "_instance_analyses.jpg", dpi = 200)
 
 
-    if groupName == "10":
+    if False:
         dots = []
         for x in ["06", "07", "08", "09", "10"]:
             with open(join("../results/" + x, 'analyses.json'), 'r') as f:

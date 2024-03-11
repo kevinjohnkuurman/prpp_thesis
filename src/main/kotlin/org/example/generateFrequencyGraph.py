@@ -1,4 +1,4 @@
-# python3 ./src/main/kotlin/org/example/generateAdjacencyGraphs.py 06 true
+# python3 ./src/main/kotlin/org/example/generateFrequencyGraph.py
 import numpy as np
 import json
 import matplotlib.pyplot as plt
@@ -17,6 +17,14 @@ def getNumberOfComposableSupertiles(tiles):
                 id = ','.join(str(x) for x in sorted([ai, bi]))
                 potentialSuperTiles[id] = potentialSuperTiles.get(id, 0) + 1
     return len(potentialSuperTiles)
+
+
+def getFrequency(numOfSuperTiles, data):
+    forFreq = [x for x in data if x['numberComposableOfSuperTiles'] == numOfSuperTiles]
+    solvable = [x for x in forFreq if x['has_solutions']]
+    if len(forFreq) == 0:
+        return None
+    return len(solvable) / len(forFreq)
 
 
 def main():
@@ -38,38 +46,33 @@ def main():
         tiles = json.loads(instance["tiles"])
         numberComposableOfSuperTiles = getNumberOfComposableSupertiles(tiles)
 
-        hardnessMeasure = numberComposableOfSuperTiles
-
         results.append({
+            'id': id,
             'has_solutions': has_solutions,
             'recursions': recursions,
-            'hardnessMeasure': hardnessMeasure
+            'numberComposableOfSuperTiles': numberComposableOfSuperTiles
         })
+
+    minX = min([x['numberComposableOfSuperTiles'] for x in results])
+    maxX = max([x['numberComposableOfSuperTiles'] for x in results])
+    XRange = list(range(0, maxX + 2))
+    frequency = [getFrequency(x, results) for x in XRange]
+    points = [x for x in zip(XRange, frequency) if x[1] is not None]
 
     print(len(results))
     plt.rcParams.update({'font.size': 14})
-    C_SOLVABLE = np.array([1, 84, 166]) / 255.0
-    C_UNSOLVABLE = np.array([238, 28, 37]) / 255.0
 
     fig, axes = plt.subplot_mosaic("A", constrained_layout=True)
     plt1 = axes['A']
     plt1.xaxis.set_major_locator(MaxNLocator(integer=True))
     plt1.scatter(
-        [x['hardnessMeasure'] for x in results],
-        [x['recursions'] for x in results],
-        alpha=0.1,
-        c=[C_SOLVABLE if x['has_solutions'] else C_UNSOLVABLE for x in results]
+        [x[0] for x in points],
+        [x[1] for x in points],
     )
     plt1.set_xlabel('number of tile pairs sharing an edge of equal dimension')
-    plt1.set_ylabel('hardness')
-    legend_elements = [
-        plt.Line2D([0], [0], marker='o', color='w', label='With solutions', markerfacecolor=C_SOLVABLE, markersize=10),
-        plt.Line2D([0], [0], marker='o', color='w', label='Without solutions', markerfacecolor=C_UNSOLVABLE, markersize=10),
-    ]
-    plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left",
-               mode="expand", borderaxespad=0, ncol=2, handles=legend_elements)
-    plt.savefig("./figures/" + groupName + "_same_sided_edges_hardness.jpg")
-    # plt.show()
+    plt1.set_ylabel('solvable frequency')
+    plt.savefig("./figures_2/" + groupName + "_frequency_figures.jpg")
+
 
 if __name__ == '__main__':
     main()
